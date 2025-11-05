@@ -12,6 +12,9 @@ const folderList = document.getElementById('folderList');
 const snippetName = document.getElementById('snippetName');
 const saveBtn = document.getElementById('saveBtn');
 const renameBtn = document.getElementById('renameBtn');
+const exportBtn = document.getElementById("exportBtn");
+const importBtn = document.getElementById("importBtn");
+const importFile = document.getElementById("importFile");
 const deleteBtn = document.getElementById('deleteBtn');
 const newBtn = document.getElementById('newBtn');
 const newFolderBtn = document.getElementById('newFolderBtn');
@@ -260,5 +263,59 @@ document.addEventListener("keydown", e => {
 });
 
 // 🔹 Inicialización
+
+// 🔹 Exportar todos los snippets como JSON
+exportBtn.onclick = () => {
+    const data = getData();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "snippets_backup.json";
+    a.click();
+    URL.revokeObjectURL(url);
+    alert("Backup exportado correctamente ✅");
+};
+
+// 🔹 Importar JSON y fusionar con los datos actuales
+importBtn.onclick = () => {
+    importFile.click();
+};
+
+importFile.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const text = await file.text();
+    try {
+        const importedData = JSON.parse(text);
+        const currentData = getData();
+
+        // Fusionar sin sobrescribir (si hay conflicto)
+        for (const folder in importedData) {
+            if (!currentData[folder]) currentData[folder] = {};
+            for (const snippet in importedData[folder]) {
+                if (!currentData[folder][snippet]) {
+                    currentData[folder][snippet] = importedData[folder][snippet];
+                } else {
+                    const overwrite = confirm(`El snippet "${snippet}" ya existe en "${folder}". ¿Deseas reemplazarlo?`);
+                    if (overwrite) {
+                        currentData[folder][snippet] = importedData[folder][snippet];
+                    }
+                }
+            }
+        }
+
+        saveData(currentData);
+        renderFolders();
+        alert("Datos importados correctamente ✅");
+    } catch (err) {
+        alert("Error al importar JSON: archivo inválido ❌");
+        console.error(err);
+    }
+
+    e.target.value = ""; // limpiar input
+};
+
 migrateOldSnippets();
 renderFolders();
