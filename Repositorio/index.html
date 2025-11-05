@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Repositorio de Códigos</title>
+
+    <!-- CodeMirror -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/dracula.min.css">
+    <link rel="shortcut icon" href="NexConfus.png" type="image/x-icon">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/lua/lua.min.js"></script>
+
+    <!-- CSS propio -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="sidebar">
+        <header>
+            <span>∞ Carpetas</span>
+            <button id="newFolderBtn">+∞</button>
+        </header>
+        <div id="folderList"></div>
+    </div>
+
+    <div id="editor-container">
+        <header>
+            <span class="nexito"><img src="NexConfus.png" alt="💚">Nexopolis</span>
+            <input id="snippetName" placeholder="Nombre del Archivo">
+        </header>
+
+        <div id="editor"></div>
+
+        <footer>
+            <div>
+                <button id="saveBtn">Ξ Guardar</button>
+                <button id="renameBtn">Θ Renombrar</button>
+                <button id="deleteBtn">Φ Borrar</button>
+            </div>
+            <div>
+                <button id="newBtn">Ψ Nuevo</button>
+                <span class="shortcut-hint">
+                    Alt+N = Nuevo | Ctrl+S = Guardar | Ctrl+R = Renombrar | Ctrl+B = Borrar
+                </span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- JS propio -->
+    <script src="script.js"></script>
+</body>
+
+</html>
