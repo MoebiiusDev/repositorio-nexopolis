@@ -37,6 +37,7 @@ body {
     background: #333;
     margin-bottom: 8px;
     border-radius: 5px;
+    padding: 5px;
 }
 
 .folder-header {
@@ -124,11 +125,13 @@ footer {
     display: flex;
     justify-content: space-between;
     padding: 10px;
-    position: fixed;
+    position: sticky;
     bottom: 0;
-    width: calc(100% - 250px);
+    width: 100%;
+    /* <-- Antes era calc(100% - 250px), pero esto no sigue el sidebar */
     z-index: 10;
 }
+
 
 button {
     background-color: #333;
@@ -141,8 +144,11 @@ button {
 }
 
 button#newFolderBtn {
-    font-size: 30px;
+    font-size: 15px;
     width: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 button:hover {
@@ -182,4 +188,153 @@ input {
 
 .folder-action-btn.delete {
     color: #ff8888;
+}
+
+
+/* -- NOTIFICACIONES ESTILO STEAM / DISCORD -- */
+#toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.toast {
+    padding: 12px 18px;
+    border-radius: 6px;
+    background: rgba(30, 30, 30, 0.95);
+    color: #9cfed5;
+    /* tu verde característico */
+    border-left: 4px solid #5b9d81;
+    font-weight: bold;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0;
+    transform: translateX(20px);
+    animation: fadeToast 0.4s forwards;
+}
+
+.toast.error {
+    border-left-color: #ff6b6b;
+    color: #ffb3b3;
+}
+
+.toast.success {
+    border-left-color: #9cfed5;
+}
+
+@keyframes fadeToast {
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeOutToast {
+    to {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+}
+
+/* -- SCROLLBARS PERSONALIZADOS -- */
+::-webkit-scrollbar {
+    width: 10px;
+    background: #1e1e1e;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #5b9d81;
+    /* verde suave */
+    border-radius: 5px;
+    border: 2px solid #1e1e1e;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #77ffd2;
+}
+
+::-webkit-scrollbar-corner {
+    background: #1e1e1e;
+}
+
+/* --- MODAL PERSONALIZADO (NUEVA VERSIÓN) --- */
+
+#modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999999999;
+}
+
+#modal-overlay.hidden {
+    display: none;
+}
+
+#modal-box {
+    background: #1b1b1bcc;
+    padding: 20px 25px;
+    border-radius: 10px;
+    border: 2px solid #9cfed5;
+    width: 350px;
+    color: #c7fbe9;
+    animation: modalIn 0.2s ease-out;
+}
+
+@keyframes modalIn {
+    from { opacity: 0; transform: scale(0.8); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+#modal-title {
+    margin: 0 0 10px;
+    font-size: 20px;
+    color: #9cfed5;
+}
+
+#modal-message {
+    margin-bottom: 15px;
+    color: #c7fbe9;
+}
+
+#modal-input {
+    width: 100%;
+    padding: 7px;
+    margin-bottom: 15px;
+    background: #131313;
+    border: 1px solid #9cfed5;
+    border-radius: 5px;
+    color: #9cfed5;
+}
+
+#modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+#modal-buttons button {
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: 0.15s;
+    border: none;
+}
+
+#modal-cancel {
+    background: #ff8888;
+    color: black;
+}
+
+#modal-ok {
+    background: #9cfed5;
+    color: black;
 }

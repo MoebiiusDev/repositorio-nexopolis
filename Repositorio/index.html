@@ -21,7 +21,7 @@
     <div id="sidebar">
         <header>
             <span>∞ Carpetas</span>
-            <button id="newFolderBtn">+∞</button>
+            <button id="newFolderBtn">+𝘯𝘦𝘸</button>
         </header>
         <div id="folderList"></div>
     </div>
@@ -41,17 +41,33 @@
                 <button id="deleteBtn">Φ Borrar</button>
                 <button id="exportBtn">⭳ Exportar</button>
                 <button id="importBtn">⭱ Importar</button>
+                <button id="copyAllBtn">⧉ Copiar Todo</button>
                 <input type="file" id="importFile" accept=".json" style="display:none;">
             </div>
             <div>
                 <button id="newBtn">Ψ Nuevo</button>
                 <span class="shortcut-hint">
-                    Alt+N = Nuevo | Ctrl+S = Guardar | Ctrl+R = Renombrar | Ctrl+B = Borrar
+                    Alt+N = Nuevo | Ctrl+S = Guardar | Ctrl+R = Renombrar | Ctrl+B = Borrar | Ctrl+A = Copiar
                 </span>
             </div>
         </footer>
-
     </div>
+    <div id="modal-overlay" class="hidden">
+        <div id="modal-box">
+            <h2 id="modal-title">Título</h2>
+            <p id="modal-message">Mensaje</p>
+
+            <input id="modal-input" type="text" />
+
+            <div id="modal-buttons">
+                <button id="modal-cancel">Cancelar</button>
+                <button id="modal-ok">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
 
     <!-- JS propio -->
     <script src="script.js"></script>
