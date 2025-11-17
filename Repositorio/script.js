@@ -1,4 +1,10 @@
 /* ============================================================
+   CONFIGURACIÓN Y PREFIJOS
+============================================================ */
+
+const REPONEX_PREFIX = 'reponex_';
+
+/* ============================================================
    CONFIGURACIÓN DEL EDITOR
 ============================================================ */
 
@@ -33,6 +39,90 @@ let currentSnippet = null;
 let draggedSnippet = null;
 let draggedFromFolder = null;
 
+/* ============================================================
+   LOCALSTORAGE CON MIGRACIÓN AUTOMÁTICA
+============================================================ */
+
+function getData() {
+    // PRIMERO: Intentar migrar datos antiguos si existen
+    migrateOldData();
+
+    // LUEGO: Devolver datos con prefijo nuevo
+    return JSON.parse(localStorage.getItem(REPONEX_PREFIX + "snippetsData") || "{}");
+}
+
+function saveData(data) {
+    localStorage.setItem(REPONEX_PREFIX + "snippetsData", JSON.stringify(data));
+}
+
+function ensureFolderExists(data, name) {
+    if (!data[name]) data[name] = {};
+}
+
+function migrateOldData() {
+    // Verificar si ya migramos antes
+    if (localStorage.getItem(REPONEX_PREFIX + 'migrated')) {
+        return; // Ya se migró, no hacer nada
+    }
+
+    const oldData = localStorage.getItem("snippetsData");
+
+    if (oldData) {
+        console.log("🔄 Migrando datos antiguos de Reponexopolis...");
+
+        // Copiar datos antiguos a nueva ubicación
+        localStorage.setItem(REPONEX_PREFIX + "snippetsData", oldData);
+
+        // Mantener copia de seguridad de datos antiguos por seguridad
+        localStorage.setItem(REPONEX_PREFIX + "backup_old_snippetsData", oldData);
+
+        // Marcar como migrado
+        localStorage.setItem(REPONEX_PREFIX + 'migrated', 'true');
+
+        console.log("✅ Migración completada");
+
+        // Mostrar notificación al usuario
+        toast("Sistema actualizado - Datos migrados exitosamente ✔", "success");
+    } else {
+        // No hay datos antiguos, marcar como migrado igual
+        localStorage.setItem(REPONEX_PREFIX + 'migrated', 'true');
+    }
+}
+
+/* ============================================================
+   MIGRACIÓN DE VERSIONES ANTIGUAS (SNIPPETS SUELTOS)
+============================================================ */
+
+function migrateOldSnippets() {
+    const data = getData();
+    ensureFolderExists(data, "Sin categoría");
+
+    let migratedCount = 0;
+
+    for (const key in localStorage) {
+        if (!localStorage.hasOwnProperty(key)) continue;
+
+        // IGNORAR todas las claves con prefijos de otros proyectos
+        if (key.startsWith('arkemius_') || key.startsWith('reponex_')) continue;
+
+        // Solo procesar claves que parecen ser snippets del proyecto antiguo
+        // (excluyendo la clave principal que ya manejamos en migrateOldData)
+        if (key !== "snippetsData" && typeof localStorage.getItem(key) === "string") {
+            const value = localStorage.getItem(key);
+            if (value && value.trim().length > 0) {
+                data["Sin categoría"][key] = value;
+                localStorage.removeItem(key);
+                migratedCount++;
+            }
+        }
+    }
+
+    if (migratedCount > 0) {
+        saveData(data);
+        console.log(`✅ Migrados ${migratedCount} snippets antiguos`);
+        toast(`Migrados ${migratedCount} snippets antiguos ✔`);
+    }
+}
 
 /* ============================================================
    MODALES PERSONALIZADOS
@@ -103,46 +193,6 @@ function customConfirm(message) {
     });
 }
 
-
-
-/* ============================================================
-   LOCALSTORAGE
-============================================================ */
-
-function getData() {
-    return JSON.parse(localStorage.getItem("snippetsData") || "{}");
-}
-
-function saveData(data) {
-    localStorage.setItem("snippetsData", JSON.stringify(data));
-}
-
-function ensureFolderExists(data, name) {
-    if (!data[name]) data[name] = {};
-}
-
-/* ============================================================
-   MIGRACIÓN DE VERSIONES ANTIGUAS
-============================================================ */
-
-function migrateOldSnippets() {
-    const data = getData();
-    ensureFolderExists(data, "Sin categoría");
-
-    for (const key in localStorage) {
-        if (!localStorage.hasOwnProperty(key)) continue;
-        if (key === "snippetsData") continue;
-
-        const value = localStorage.getItem(key);
-        if (typeof value === "string" && value.trim().length > 0) {
-            data["Sin categoría"][key] = value;
-            localStorage.removeItem(key);
-        }
-    }
-
-    saveData(data);
-}
-
 /* ============================================================
    TOASTS
 ============================================================ */
@@ -170,7 +220,6 @@ function toggleFolder(folderDiv) {
     const snippets = folderDiv.querySelector(".snippets");
     snippets.style.display = snippets.style.display === "none" ? "block" : "none";
 }
-
 
 function renderFolders() {
     const data = getData();
@@ -262,7 +311,6 @@ function renderFolders() {
         folderList.appendChild(folderDiv);
     });
 }
-
 
 /* ============================================================
    RENOMBRAR CARPETA (CON MODAL)
@@ -380,7 +428,6 @@ newBtn.onclick = async () => {
     renderFolders();
 };
 
-
 // Copiar todo
 copyAllBtn.onclick = () => {
     navigator.clipboard.writeText(editor.getValue())
@@ -469,8 +516,6 @@ importFile.onchange = async e => {
    DRAG & DROP DE SNIPPETS ENTRE CARPETAS
 ============================================================ */
 
-
-
 function enableSnippetDrag(item, folderName, snippetName) {
     item.draggable = true;
 
@@ -516,10 +561,13 @@ function enableFolderDrop(folderHeader, folderName) {
     });
 }
 
-
 /* ============================================================
    INICIALIZACIÓN
 ============================================================ */
 
 migrateOldSnippets();
 renderFolders();
+
+// Verificación en consola
+console.log("🚀 Reponexopolis iniciado con prefijo:", REPONEX_PREFIX);
+console.log("📊 Claves en localStorage:", Object.keys(localStorage).filter(key => key.startsWith(REPONEX_PREFIX)));
