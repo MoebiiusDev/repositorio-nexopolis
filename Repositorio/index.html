@@ -29,35 +29,47 @@
     <div id="editor-container">
         <header>
             <span class="nexito"><img src="NexConfus.png" alt="💚">Nexopolis</span>
-            <input id="snippetName" placeholder="Nombre del Archivo">
+            <span id="currentPathLabel" class="current-path"></span>
+            <input id="searchInput" placeholder="🔍 Buscar snippet o carpeta...">
         </header>
 
-        <div id="editor"></div>
-
-        <footer>
-            <div>
+        <div id="toolbar">
+            <div class="toolbar-group">
+                <button id="newBtn" class="btn-primary">Ψ Nuevo</button>
                 <button id="saveBtn">Ξ Guardar</button>
                 <button id="renameBtn">Θ Renombrar</button>
                 <button id="deleteBtn">Φ Borrar</button>
                 <button id="exportBtn">⭳ Exportar</button>
                 <button id="importBtn">⭱ Importar</button>
                 <button id="copyAllBtn">⧉ Copiar Todo</button>
+                <button id="selectModeBtn">☑ Seleccionar</button>
                 <input type="file" id="importFile" accept=".json" style="display:none;">
             </div>
-            <div>
-                <button id="newBtn">Ψ Nuevo</button>
-                <span class="shortcut-hint">
-                    Alt+N = Nuevo | Ctrl+S = Guardar | Ctrl+R = Renombrar | Ctrl+B = Borrar | Ctrl+A = Copiar
-                </span>
+            <span class="shortcut-hint">
+                Alt+N = Nuevo | Ctrl+S = Guardar | Ctrl+R = Renombrar | Ctrl+B = Borrar | Ctrl+A = Copiar
+            </span>
+        </div>
+
+        <div id="bulkActionsBar" class="hidden">
+            <span id="selectionCount">0 seleccionados</span>
+            <div class="bulk-buttons">
+                <button id="bulkMoveBtn">Mover a...</button>
+                <button id="bulkExportBtn">Exportar selección</button>
+                <button id="bulkDeleteBtn">Eliminar selección</button>
+                <button id="bulkCancelBtn">Cancelar</button>
             </div>
-        </footer>
+        </div>
+
+        <div id="editor"></div>
     </div>
+
     <div id="modal-overlay" class="hidden">
         <div id="modal-box">
             <h2 id="modal-title">Título</h2>
             <p id="modal-message">Mensaje</p>
 
             <input id="modal-input" type="text" />
+            <select id="modal-folder-select" class="hidden"></select>
 
             <div id="modal-buttons">
                 <button id="modal-cancel">Cancelar</button>

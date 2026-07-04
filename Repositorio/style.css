@@ -66,6 +66,32 @@ body {
     opacity: 0.5;
 }
 
+.snippet-item.selected {
+    background: #2f6b52;
+    box-shadow: inset 3px 0 0 #9cfed5;
+}
+
+.snippet-item.search-match {
+    outline: 1px solid #9cfed5;
+}
+
+.folder.important {
+    border: 1px solid #d4af37;
+    background: linear-gradient(135deg, #333 0%, #3a3320 100%);
+}
+
+.folder.important .folder-header {
+    color: #ffd700;
+}
+
+.folder-action-btn.star {
+    color: #888;
+}
+
+.folder-action-btn.star.active {
+    color: #ffd700;
+}
+
 header {
     background: #252526;
     padding: 10px;
@@ -95,17 +121,105 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
     border-bottom: 1px solid #333;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+#currentPathLabel {
+    font-size: 12px;
+    color: #888;
+    flex: 1;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#searchInput {
+    width: 240px;
+}
+
+/* -- TOOLBAR (antes footer, ahora arriba para mayor comodidad) -- */
+#toolbar {
+    background: #252526;
+    border-bottom: 1px solid #333;
+    padding: 8px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    flex-shrink: 0;
+    z-index: 4;
+}
+
+.toolbar-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Botón "Nuevo" resaltado: es la acción principal para crear snippets */
+.btn-primary {
+    background-color: #9cfed5;
+    color: #10241d;
+    font-weight: bold;
+    box-shadow: 0 0 0 1px #5b9d81;
+}
+
+.btn-primary:hover {
+    background-color: #77ffd2;
+    color: #10241d;
+}
+
+/* Barra de acciones en lote (modo selección múltiple) */
+#bulkActionsBar {
+    background: #2a3b32;
+    border-bottom: 1px solid #333;
+    padding: 8px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+    z-index: 4;
+}
+
+#bulkActionsBar.hidden {
+    display: none;
+}
+
+#selectionCount {
+    color: #9cfed5;
+    font-weight: bold;
+    margin-right: 10px;
+}
+
+.bulk-buttons button {
+    margin-right: 5px;
+}
+
+#selectModeBtn.active {
+    background-color: #5b9d81;
+    color: #10241d;
 }
 
 /* Contenedor del editor con scroll propio */
 #editor {
     flex: 1;
-    height: calc(100vh - 140px);
-    /* ajusta según el alto de tu header+footer */
+    min-height: 0;
+    /* min-height:0 es necesario para que un flex item pueda
+       encogerse correctamente dentro de #editor-container,
+       ahora que arriba hay header + toolbar + barra de selección */
 
-    /* <-- altura deseada */
-    overflow-y: auto;
+    /* IMPORTANTE: no poner overflow-y aquí.
+       CodeMirror gestiona su propio scroll internamente
+       (virtualiza líneas para archivos largos). Si este
+       contenedor también scrollea, CodeMirror mide mal su
+       viewport y con snippets extensos se corta el contenido. */
+    overflow: hidden;
     background: #1e1e1e;
     border-top: 1px solid #333;
 }
@@ -117,19 +231,6 @@ header {
     font-size: 14px;
     background-color: #1e1e1e !important;
     color: #ddd;
-}
-
-
-footer {
-    background: #252526;
-    display: flex;
-    justify-content: space-between;
-    padding: 10px;
-    position: sticky;
-    bottom: 0;
-    width: 100%;
-    /* <-- Antes era calc(100% - 250px), pero esto no sigue el sidebar */
-    z-index: 10;
 }
 
 
@@ -313,6 +414,20 @@ input {
     border: 1px solid #9cfed5;
     border-radius: 5px;
     color: #9cfed5;
+}
+
+#modal-folder-select {
+    width: 100%;
+    padding: 7px;
+    margin-bottom: 15px;
+    background: #131313;
+    border: 1px solid #9cfed5;
+    border-radius: 5px;
+    color: #9cfed5;
+}
+
+.hidden {
+    display: none !important;
 }
 
 #modal-buttons {

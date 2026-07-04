@@ -22,7 +22,8 @@ const editor = CodeMirror(document.getElementById('editor'), {
 ============================================================ */
 
 const folderList = document.getElementById('folderList');
-const snippetName = document.getElementById('snippetName');
+const searchInput = document.getElementById('searchInput');
+const currentPathLabel = document.getElementById('currentPathLabel');
 const saveBtn = document.getElementById('saveBtn');
 const renameBtn = document.getElementById('renameBtn');
 const exportBtn = document.getElementById("exportBtn");
@@ -32,12 +33,23 @@ const deleteBtn = document.getElementById('deleteBtn');
 const newBtn = document.getElementById('newBtn');
 const copyAllBtn = document.getElementById("copyAllBtn");
 const newFolderBtn = document.getElementById('newFolderBtn');
+const selectModeBtn = document.getElementById('selectModeBtn');
+
+const bulkActionsBar = document.getElementById('bulkActionsBar');
+const selectionCount = document.getElementById('selectionCount');
+const bulkMoveBtn = document.getElementById('bulkMoveBtn');
+const bulkExportBtn = document.getElementById('bulkExportBtn');
+const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+const bulkCancelBtn = document.getElementById('bulkCancelBtn');
 
 let currentFolder = "Sin categoría";
 let currentSnippet = null;
 
 let draggedSnippet = null;
 let draggedFromFolder = null;
+
+let selectionMode = false;
+let selectedItems = []; // [{ folder, snippet }]
 
 /* ============================================================
    LOCALSTORAGE CON MIGRACIÓN AUTOMÁTICA
@@ -125,6 +137,28 @@ function migrateOldSnippets() {
 }
 
 /* ============================================================
+   CARPETAS IMPORTANTES (ESTRELLA DORADA)
+============================================================ */
+
+function getImportantFolders() {
+    return JSON.parse(localStorage.getItem(REPONEX_PREFIX + "importantFolders") || "[]");
+}
+
+function setImportantFolders(list) {
+    localStorage.setItem(REPONEX_PREFIX + "importantFolders", JSON.stringify(list));
+}
+
+function toggleImportantFolder(folderName) {
+    let important = getImportantFolders();
+    if (important.includes(folderName)) {
+        important = important.filter(f => f !== folderName);
+    } else {
+        important.push(folderName);
+    }
+    setImportantFolders(important);
+}
+
+/* ============================================================
    MODALES PERSONALIZADOS
 ============================================================ */
 
@@ -134,6 +168,7 @@ function customPrompt(title, message, defaultText = "") {
         const titleEl = document.getElementById("modal-title");
         const msgEl = document.getElementById("modal-message");
         const input = document.getElementById("modal-input");
+        const folderSelect = document.getElementById("modal-folder-select");
         const cancel = document.getElementById("modal-cancel");
         const ok = document.getElementById("modal-ok");
 
@@ -142,6 +177,7 @@ function customPrompt(title, message, defaultText = "") {
 
         input.value = defaultText;
         input.classList.remove("hidden");
+        folderSelect.classList.add("hidden");
 
         overlay.classList.remove("hidden");
         input.focus();
@@ -164,14 +200,16 @@ function customConfirm(message) {
         const titleEl = document.getElementById("modal-title");
         const msgEl = document.getElementById("modal-message");
         const input = document.getElementById("modal-input");
+        const folderSelect = document.getElementById("modal-folder-select");
         const cancel = document.getElementById("modal-cancel");
         const ok = document.getElementById("modal-ok");
 
         titleEl.textContent = "Confirmar";
         msgEl.textContent = message;
 
-        // ❗ Ocultar el input a la fuerza
+        // ❗ Ocultar el input y el select a la fuerza
         input.classList.add("hidden");
+        folderSelect.classList.add("hidden");
 
         // Colores para confirmar
         ok.style.background = "#9cfed5";
@@ -194,23 +232,175 @@ function customConfirm(message) {
 }
 
 /* ============================================================
+   MODAL DE NUEVO SNIPPET (CON SELECTOR DE CARPETA DESTINO)
+============================================================ */
+
+function customPromptNewSnippet(folderNames, defaultFolder) {
+    return new Promise(resolve => {
+        const overlay = document.getElementById("modal-overlay");
+        const titleEl = document.getElementById("modal-title");
+        const msgEl = document.getElementById("modal-message");
+        const input = document.getElementById("modal-input");
+        const folderSelect = document.getElementById("modal-folder-select");
+        const cancel = document.getElementById("modal-cancel");
+        const ok = document.getElementById("modal-ok");
+
+        titleEl.textContent = "Nuevo Snippet";
+        msgEl.textContent = "Nombre del snippet y carpeta destino:";
+
+        input.value = "";
+        input.placeholder = "Nombre del snippet";
+        input.classList.remove("hidden");
+
+        folderSelect.innerHTML = "";
+        folderNames.forEach(folder => {
+            const opt = document.createElement("option");
+            opt.value = folder;
+            opt.textContent = folder;
+            if (folder === defaultFolder) opt.selected = true;
+            folderSelect.appendChild(opt);
+        });
+        folderSelect.classList.remove("hidden");
+
+        overlay.classList.remove("hidden");
+        input.focus();
+
+        const close = () => {
+            overlay.classList.add("hidden");
+            input.placeholder = "";
+            folderSelect.classList.add("hidden");
+        };
+
+        cancel.onclick = () => {
+            close();
+            resolve(null);
+        };
+
+        ok.onclick = () => {
+            const name = input.value.trim();
+            const folder = folderSelect.value || defaultFolder;
+            close();
+            resolve(name ? { name, folder } : null);
+        };
+    });
+}
+
+/* ============================================================
    TOASTS
 ============================================================ */
 
 function toast(message, type = "success") {
     const container = document.getElementById("toast-container");
 
-    const toast = document.createElement("div");
-    toast.className = `toast ${type}`;
-    toast.textContent = message;
+    const toastEl = document.createElement("div");
+    toastEl.className = `toast ${type}`;
+    toastEl.textContent = message;
 
-    container.appendChild(toast);
+    container.appendChild(toastEl);
 
     setTimeout(() => {
-        toast.style.animation = "fadeOutToast 0.4s forwards";
-        setTimeout(() => toast.remove(), 400);
+        toastEl.style.animation = "fadeOutToast 0.4s forwards";
+        setTimeout(() => toastEl.remove(), 400);
     }, 3000);
 }
+
+/* ============================================================
+   RUTA ACTUAL (reemplaza el antiguo uso del input snippetName)
+============================================================ */
+
+function updateCurrentPathLabel() {
+    if (currentSnippet) {
+        currentPathLabel.textContent = `📄 ${currentFolder} / ${currentSnippet}`;
+    } else {
+        currentPathLabel.textContent = "";
+    }
+}
+
+/* ============================================================
+   MODO SELECCIÓN MÚLTIPLE
+============================================================ */
+
+function toggleSelectionMode() {
+    selectionMode = !selectionMode;
+    selectModeBtn.classList.toggle('active', selectionMode);
+    selectModeBtn.textContent = selectionMode ? "☑ Cancelar selección" : "☑ Seleccionar";
+
+    if (!selectionMode) {
+        selectedItems = [];
+    }
+
+    updateBulkBar();
+    renderFolders();
+}
+
+function exitSelectionMode() {
+    selectionMode = false;
+    selectedItems = [];
+    selectModeBtn.classList.remove('active');
+    selectModeBtn.textContent = "☑ Seleccionar";
+    updateBulkBar();
+}
+
+function updateBulkBar() {
+    if (selectionMode) {
+        bulkActionsBar.classList.remove('hidden');
+        selectionCount.textContent = `${selectedItems.length} seleccionados`;
+    } else {
+        bulkActionsBar.classList.add('hidden');
+    }
+}
+
+function isSelected(folder, snippet) {
+    return selectedItems.some(s => s.folder === folder && s.snippet === snippet);
+}
+
+function toggleSelection(folder, snippet, itemEl) {
+    const idx = selectedItems.findIndex(s => s.folder === folder && s.snippet === snippet);
+    if (idx >= 0) {
+        selectedItems.splice(idx, 1);
+        itemEl.classList.remove('selected');
+    } else {
+        selectedItems.push({ folder, snippet });
+        itemEl.classList.add('selected');
+    }
+    updateBulkBar();
+}
+
+/* ============================================================
+   BUSCADOR DE SNIPPETS / CARPETAS
+============================================================ */
+
+function applySearchFilter() {
+    const query = searchInput.value.trim().toLowerCase();
+    const folderDivs = folderList.querySelectorAll('.folder');
+
+    folderDivs.forEach(folderDiv => {
+        const folderNameEl = folderDiv.querySelector('.folder-title');
+        const folderNameText = folderNameEl ? folderNameEl.textContent.toLowerCase() : "";
+        const snippetItems = folderDiv.querySelectorAll('.snippet-item');
+
+        let anySnippetMatch = false;
+
+        snippetItems.forEach(item => {
+            const text = item.textContent.toLowerCase();
+            const matches = query !== "" && text.includes(query);
+            item.classList.toggle('search-match', matches);
+            if (matches) anySnippetMatch = true;
+        });
+
+        const folderNameMatches = query !== "" && folderNameText.includes(query);
+        const show = query === "" || folderNameMatches || anySnippetMatch;
+
+        folderDiv.style.display = show ? "" : "none";
+
+        if (query !== "" && anySnippetMatch) {
+            const snippetsDiv = folderDiv.querySelector('.snippets');
+            if (snippetsDiv) snippetsDiv.style.display = "block";
+        }
+    });
+}
+
+searchInput.addEventListener('input', applySearchFilter);
 
 /* ============================================================
    CARPETAS Y SNIPPETS
@@ -223,26 +413,45 @@ function toggleFolder(folderDiv) {
 
 function renderFolders() {
     const data = getData();
+    const importantFolders = getImportantFolders();
     folderList.innerHTML = "";
 
-    const sortedFolders = Object.keys(data).sort((a, b) =>
-        a.localeCompare(b, 'es', { sensitivity: 'base' })
-    );
+    const sortedFolders = Object.keys(data).sort((a, b) => {
+        const aImp = importantFolders.includes(a);
+        const bImp = importantFolders.includes(b);
+        if (aImp && !bImp) return -1;
+        if (!aImp && bImp) return 1;
+        return a.localeCompare(b, 'es', { sensitivity: 'base' });
+    });
 
     sortedFolders.forEach(folderName => {
+        const isImportant = importantFolders.includes(folderName);
+
         const folderDiv = document.createElement("div");
-        folderDiv.className = "folder";
+        folderDiv.className = "folder" + (isImportant ? " important" : "");
 
         const header = document.createElement("div");
         header.className = "folder-header";
 
         const titleSpan = document.createElement("span");
+        titleSpan.className = "folder-title";
         titleSpan.textContent = folderName;
         titleSpan.onclick = () => toggleFolder(folderDiv);
 
         const folderBtnGroup = document.createElement("div");
         folderBtnGroup.style.display = "flex";
         folderBtnGroup.style.gap = "5px";
+
+        // Marcar como importante → estrella dorada
+        const starBtn = document.createElement("button");
+        starBtn.textContent = isImportant ? "⭐" : "☆";
+        starBtn.title = isImportant ? "Quitar de importantes" : "Marcar como importante";
+        starBtn.className = "folder-action-btn star" + (isImportant ? " active" : "");
+        starBtn.onclick = e => {
+            e.stopPropagation();
+            toggleImportantFolder(folderName);
+            renderFolders();
+        };
 
         // Renombrar carpeta → usa customPrompt
         const renameFolderBtn = document.createElement("button");
@@ -255,7 +464,8 @@ function renderFolders() {
 
         // Borrar carpeta → customConfirm
         const deleteFolderBtn = document.createElement("button");
-        deleteFolderBtn.textContent = "Ω";
+        deleteFolderBtn.textContent = "𝘥𝘦𝘭𝘦𝘵𝘦";
+        deleteFolderBtn.title = "Eliminar carpeta";
         deleteFolderBtn.className = "folder-action-btn delete";
         deleteFolderBtn.onclick = async e => {
             e.stopPropagation();
@@ -276,6 +486,7 @@ function renderFolders() {
             renderFolders();
         };
 
+        folderBtnGroup.appendChild(starBtn);
         folderBtnGroup.appendChild(renameFolderBtn);
         folderBtnGroup.appendChild(deleteFolderBtn);
 
@@ -293,10 +504,18 @@ function renderFolders() {
             item.className = "snippet-item";
             item.textContent = snippet;
 
+            if (selectionMode && isSelected(folderName, snippet)) {
+                item.classList.add('selected');
+            }
+
             item.onclick = () => {
+                if (selectionMode) {
+                    toggleSelection(folderName, snippet, item);
+                    return;
+                }
                 currentSnippet = snippet;
                 currentFolder = folderName;
-                snippetName.value = snippet;
+                updateCurrentPathLabel();
                 editor.setValue(data[folderName][snippet]);
             };
 
@@ -310,6 +529,8 @@ function renderFolders() {
         folderDiv.appendChild(snippetsDiv);
         folderList.appendChild(folderDiv);
     });
+
+    applySearchFilter();
 }
 
 /* ============================================================
@@ -329,6 +550,14 @@ async function renameFolder(oldName) {
 
     data[newName] = data[oldName];
     delete data[oldName];
+
+    // Mantener marca de "importante" si la carpeta la tenía
+    const important = getImportantFolders();
+    const idx = important.indexOf(oldName);
+    if (idx >= 0) {
+        important[idx] = newName;
+        setImportantFolders(important);
+    }
 
     if (currentFolder === oldName) currentFolder = newName;
 
@@ -351,19 +580,19 @@ newFolderBtn.onclick = async () => {
     renderFolders();
 };
 
-// Guardar snippet
+// Guardar snippet (usa el snippet actualmente abierto, ya no un input de nombre)
 saveBtn.onclick = () => {
-    const name = snippetName.value.trim();
-    if (!name) return toast("Ponle un nombre al snippet");
+    if (!currentSnippet) {
+        return toast("Crea o abre un snippet primero (botón 'Nuevo') ❗", "error");
+    }
 
     const code = editor.getValue();
     const data = getData();
 
     ensureFolderExists(data, currentFolder);
-    data[currentFolder][name] = code;
+    data[currentFolder][currentSnippet] = code;
 
     saveData(data);
-    currentSnippet = name;
     renderFolders();
     toast("Snippet guardado ✔");
 };
@@ -383,7 +612,7 @@ renameBtn.onclick = async () => {
     saveData(data);
 
     currentSnippet = newName;
-    snippetName.value = newName;
+    updateCurrentPathLabel();
 
     renderFolders();
 };
@@ -401,29 +630,39 @@ deleteBtn.onclick = async () => {
     saveData(data);
 
     editor.setValue("");
-    snippetName.value = "";
     currentSnippet = null;
+    updateCurrentPathLabel();
 
     renderFolders();
 };
 
 // Nuevo snippet
 newBtn.onclick = async () => {
-    const name = await customPrompt("Nuevo Snippet", "Ingresa el nombre del snippet:");
-    if (!name) {
+    const data = getData();
+    ensureFolderExists(data, "Sin categoría");
+
+    const folderNames = Object.keys(data).sort((a, b) =>
+        a.localeCompare(b, 'es', { sensitivity: 'base' })
+    );
+
+    const result = await customPromptNewSnippet(folderNames, "Sin categoría");
+    if (!result) {
         toast("Debes ingresar un nombre para crear un snippet ❗", "error");
         return;
     }
 
-    const data = getData();
-    ensureFolderExists(data, currentFolder);
+    const { name, folder } = result;
 
-    data[currentFolder][name] = "";
+    ensureFolderExists(data, folder);
+    data[folder][name] = "";
     saveData(data);
 
+    // La carpeta destino elegida en el modal pasa a ser la carpeta activa,
+    // sin importar qué snippet estuviera abierto antes.
+    currentFolder = folder;
     currentSnippet = name;
-    snippetName.value = name;
     editor.setValue("");
+    updateCurrentPathLabel();
 
     renderFolders();
 };
@@ -433,6 +672,101 @@ copyAllBtn.onclick = () => {
     navigator.clipboard.writeText(editor.getValue())
         .then(() => toast("Código copiado ✔"))
         .catch(() => toast("Error al copiar ❌"));
+};
+
+// Modo selección múltiple
+selectModeBtn.onclick = toggleSelectionMode;
+
+/* ============================================================
+   ACCIONES EN LOTE (MODO SELECCIÓN)
+============================================================ */
+
+bulkMoveBtn.onclick = async () => {
+    if (selectedItems.length === 0) return toast("No hay snippets seleccionados", "error");
+
+    const data = getData();
+    const folderNames = Object.keys(data).sort((a, b) =>
+        a.localeCompare(b, 'es', { sensitivity: 'base' })
+    );
+
+    const dest = await customPrompt(
+        "Mover selección",
+        `Carpetas disponibles: ${folderNames.join(", ")}. Escribe el nombre destino (puede ser una nueva):`
+    );
+    if (!dest) return;
+
+    ensureFolderExists(data, dest);
+
+    let movedCount = 0;
+    selectedItems.forEach(({ folder, snippet }) => {
+        if (folder === dest) return;
+        if (!data[folder] || !Object.prototype.hasOwnProperty.call(data[folder], snippet)) return;
+
+        data[dest][snippet] = data[folder][snippet];
+        delete data[folder][snippet];
+        movedCount++;
+    });
+
+    saveData(data);
+    exitSelectionMode();
+    renderFolders();
+    toast(`${movedCount} snippet(s) movidos a "${dest}" ✔`);
+};
+
+bulkExportBtn.onclick = () => {
+    if (selectedItems.length === 0) return toast("No hay snippets seleccionados", "error");
+
+    const data = getData();
+    const exportData = {};
+
+    selectedItems.forEach(({ folder, snippet }) => {
+        if (!data[folder] || !Object.prototype.hasOwnProperty.call(data[folder], snippet)) return;
+        if (!exportData[folder]) exportData[folder] = {};
+        exportData[folder][snippet] = data[folder][snippet];
+    });
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "snippets_seleccionados.json";
+    a.click();
+
+    URL.revokeObjectURL(url);
+    toast("Selección exportada ✔");
+};
+
+bulkDeleteBtn.onclick = async () => {
+    if (selectedItems.length === 0) return toast("No hay snippets seleccionados", "error");
+
+    const ok = await customConfirm(`¿Eliminar ${selectedItems.length} snippet(s) seleccionados?`);
+    if (!ok) return;
+
+    const data = getData();
+    let clearedCurrent = false;
+
+    selectedItems.forEach(({ folder, snippet }) => {
+        if (data[folder]) delete data[folder][snippet];
+        if (folder === currentFolder && snippet === currentSnippet) clearedCurrent = true;
+    });
+
+    saveData(data);
+
+    if (clearedCurrent) {
+        currentSnippet = null;
+        editor.setValue("");
+        updateCurrentPathLabel();
+    }
+
+    exitSelectionMode();
+    renderFolders();
+    toast("Snippets eliminados ✔");
+};
+
+bulkCancelBtn.onclick = () => {
+    exitSelectionMode();
+    renderFolders();
 };
 
 /* ============================================================
@@ -544,7 +878,7 @@ function enableFolderDrop(folderHeader, folderName) {
 
         const data = getData();
 
-        if (!data[draggedFromFolder] || !data[draggedFromFolder][draggedSnippet]) return;
+        if (!data[draggedFromFolder] || !Object.prototype.hasOwnProperty.call(data[draggedFromFolder], draggedSnippet)) return;
 
         // Si se suelta dentro de la misma carpeta, ignorar
         if (draggedFromFolder === folderName) return;

@@ -1,0 +1,9 @@
+# Configuración local del editor (VSCode)
+.vscode/
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Backups o exports que no deberían ir al repo
+*.log
